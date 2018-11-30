@@ -1,15 +1,15 @@
-import numpy as np
 import random
 import copy
 from collections import namedtuple, deque
 
-from model import Actor, Critic
-
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
+from model import Actor, Critic
 
+""" ORIGINAL PAPER """
 # BUFFER_SIZE = int(1e6)  # replay buffer size
 # BATCH_SIZE = 64         # minibatch size
 # GAMMA = 0.99            # discount factor
@@ -18,13 +18,32 @@ import torch.optim as optim
 # LR_CRITIC = 1e-3        # learning rate of the critic
 # WEIGHT_DECAY = 1e-2     # L2 weight decay
 
+""" BEST SO FAR """
+# BUFFER_SIZE = int(1e6)  # replay buffer size
+# BATCH_SIZE = 128        # minibatch size
+# GAMMA = 0.99            # discount factor
+# TAU = 1e-3              # for soft update of target parameters
+# LR_ACTOR = 1e-4         # learning rate of the actor 
+# LR_CRITIC = 1e-3        # learning rate of the critic
+# WEIGHT_DECAY = 0        # L2 weight decay
+
+""" ORIGINAL PENDULUM """
 BUFFER_SIZE = int(1e5)  # replay buffer size
 BATCH_SIZE = 128        # minibatch size
 GAMMA = 0.99            # discount factor
-TAU = 5e-4              # for soft update of target parameters
+TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor 
 LR_CRITIC = 1e-3        # learning rate of the critic
 WEIGHT_DECAY = 0        # L2 weight decay
+
+# BUFFER_SIZE = int(1e6)  # replay buffer size
+# BATCH_SIZE = 64         # minibatch size
+# GAMMA = 0.99            # discount factor
+# TAU = 1e-3              # for soft update of target parameters
+# LR_ACTOR = 1e-4         # learning rate of the actor 
+# LR_CRITIC = 1e-3        # learning rate of the critic
+# WEIGHT_DECAY = 0        # L2 weight decay
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -32,18 +51,21 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 class DDPGAgent():
     """Interacts with and learns from the environment."""
     
-    def __init__(self, state_size, action_size, random_seed):
+    def __init__(self, state_size, action_size, num_agents):
         """Initialize an Agent object.
         
         Params
         ======
             state_size (int): dimension of each state
             action_size (int): dimension of each action
-            random_seed (int): random seed
+            num_agents (int): number of agents in the environment
         """
+        random_seed = 1
+
         self.state_size = state_size
         self.action_size = action_size
         self.seed = random.seed(random_seed)
+        self.num_agents = num_agents
 
         # Actor Network (w/ Target Network)
         self.actor_local = Actor(state_size, action_size, random_seed).to(device)
@@ -60,27 +82,27 @@ class DDPGAgent():
 
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
-        
-    def save_experience(self, state, action, reward, next_state, done):
-        """Save experience in replay memory."""
-        self.memory.add(state, action, reward, next_state, done)
 
-    def step(self):
-        """Use random sample from buffer to learn."""
+    def step(self, states, actions, rewards, next_states, dones):
+        """Save experience in replay memory, and use random sample from buffer to learn."""
+        # Save experience / reward tuple for each agent to a shared replay buffer before sampling
+        for i in range(self.num_agents):
+            self.memory.add(states[i], actions[i], rewards[i], next_states[i], dones[i])
+
         # Learn, if enough samples are available in memory
         if len(self.memory) > BATCH_SIZE:
             experiences = self.memory.sample()
             self.learn(experiences, GAMMA)
-
-    def act(self, state, add_noise=True):
-        """Returns actions for given state as per current policy."""
-        num_agents = state.shape[0]
-        actions = np.zeros((num_agents, self.action_size))
-        agent_states = torch.from_numpy(state).float().to(device)
         
+    def act(self, states, add_noise=True):
+        """Returns actions for given state as per current policy."""
+        states = torch.from_numpy(states).float().to(device)
+
+        actions = np.zeros((self.num_agents, self.action_size))
         self.actor_local.eval()
         with torch.no_grad():
-            for i, state in enumerate(agent_states):
+            for i, state in enumerate(states):
+                # Populate list of actions one state at a time
                 actions[i, :] = self.actor_local(state).cpu().data.numpy()
         self.actor_local.train()
         
@@ -149,7 +171,7 @@ class DDPGAgent():
 class OUNoise:
     """Ornstein-Uhlenbeck process."""
 
-    def __init__(self, size, seed, mu=0., theta=0.15, sigma=0.2):
+    def __init__(self, size, seed, mu=0.0, theta=0.15, sigma=0.2):
         """Initialize parameters and noise process."""
         self.mu = mu * np.ones(size)
         self.theta = theta
@@ -164,7 +186,7 @@ class OUNoise:
     def sample(self):
         """Update internal state and return it as a noise sample."""
         x = self.state
-        dx = self.theta * (self.mu - x) + self.sigma * np.array([random.random() for i in range(len(x))])
+        dx = self.theta * (self.mu - x) + self.sigma * np.array([random.gauss(mu=0.0, sigma=1.0) for i in range(len(x))])
         self.state = x + dx
         return self.state
 

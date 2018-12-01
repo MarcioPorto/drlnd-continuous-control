@@ -9,40 +9,14 @@ import torch.optim as optim
 
 from model import Actor, Critic
 
-""" ORIGINAL PAPER """
-# BUFFER_SIZE = int(1e6)  # replay buffer size
-# BATCH_SIZE = 64         # minibatch size
-# GAMMA = 0.99            # discount factor
-# TAU = 1e-3              # for soft update of target parameters
-# LR_ACTOR = 1e-4         # learning rate of the actor 
-# LR_CRITIC = 1e-3        # learning rate of the critic
-# WEIGHT_DECAY = 1e-2     # L2 weight decay
 
-""" BEST SO FAR """
-# BUFFER_SIZE = int(1e6)  # replay buffer size
-# BATCH_SIZE = 128        # minibatch size
-# GAMMA = 0.99            # discount factor
-# TAU = 1e-3              # for soft update of target parameters
-# LR_ACTOR = 1e-4         # learning rate of the actor 
-# LR_CRITIC = 1e-3        # learning rate of the critic
-# WEIGHT_DECAY = 0        # L2 weight decay
-
-""" ORIGINAL PENDULUM """
-BUFFER_SIZE = int(1e5)  # replay buffer size
-BATCH_SIZE = 128        # minibatch size
+BUFFER_SIZE = int(1e5)  # replay buffer size (1e6 in original paper)
+BATCH_SIZE = 128        # minibatch size (128 in original paper)
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor 
 LR_CRITIC = 1e-3        # learning rate of the critic
-WEIGHT_DECAY = 0        # L2 weight decay
-
-# BUFFER_SIZE = int(1e6)  # replay buffer size
-# BATCH_SIZE = 64         # minibatch size
-# GAMMA = 0.99            # discount factor
-# TAU = 1e-3              # for soft update of target parameters
-# LR_ACTOR = 1e-4         # learning rate of the actor 
-# LR_CRITIC = 1e-3        # learning rate of the critic
-# WEIGHT_DECAY = 0        # L2 weight decay
+WEIGHT_DECAY = 0        # L2 weight decay (1e-2  in original paper)
 
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -165,7 +139,7 @@ class DDPGAgent():
             tau (float): interpolation parameter 
         """
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
-            target_param.data.copy_(tau*local_param.data + (1.0-tau)*target_param.data)
+            target_param.data.copy_(tau * local_param.data + (1.0 - tau) * target_param.data)
 
 
 class OUNoise:
@@ -186,7 +160,7 @@ class OUNoise:
     def sample(self):
         """Update internal state and return it as a noise sample."""
         x = self.state
-        dx = self.theta * (self.mu - x) + self.sigma * np.array([random.gauss(mu=0.0, sigma=1.0) for i in range(len(x))])
+        dx = self.theta * (self.mu - x) + self.sigma * np.array([np.random.normal(loc=0, scale=1) for _ in range(len(x))])
         self.state = x + dx
         return self.state
 

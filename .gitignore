@@ -1,9 +1,8 @@
 .DS_Store
 __pycache__/
 .ipynb_checkpoints/
+.vscode/
 
-double_dqn_weights.pth
-vanilla_dqn_weights.pth
 unity-environment.log
 Reacher-1.app
 Reacher-20.app

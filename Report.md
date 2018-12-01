@@ -5,33 +5,53 @@
 For this project, I decided to work on solving the version of the Reacher environment with 20 agents. I chose to implement the DDPG algorithm, based on a [previous implementation](https://github.com/MarcioPorto/deep-reinforcement-learning/tree/master/ddpg-pendulum) for the `Pendulum` Gym environment. The decision to use DDPG was based on the fact that it extends the power of the popular DQN algorithm to environments with continuous action spaces, such as this. However, there are many other policy-based algorithms that might work well for solving this kind of environment, including: TRPO, PPO, and A3C.
 
 ## Learning Algorithm
-## Plot of Rewards
+
+[DDPG](https://arxiv.org/pdf/1509.02971.pdf) was introduced as an actor-critic method that performs well in environments with a continuous action space, which is a known limitation of the popular DQN algorithm. It improves on the deterministic policy gradient (DPG) algorithm by using a neural network to take advantage of generalization and function approximation.
+
+The algorithm consists of two neural networks: an actor and a critic. The actor network is used as an approximate for the optimal deterministic policy. As a result, only one action is returned for each state, which is considered to be the best action at that state. The critic, on the other hand, learns how to evaluate the optimal action-value function by using actions from the actor. The main idea of the algorithm is that the actor calculates a new target value that is used to train the action-value function in the critic. 
+
+There are two other important features of the DDPG algorithm. The first is that it also uses a replay buffer, just like DQN. The second is that it uses soft updates as the mechanism to update the weights of the target network. This mechanism replaces the fixed update every C time steps which was used in the original version of DQN, and often leads to better convergence. However, soft updates are not exclusive to DDPG and can also be used in other algorithms such as DQN.
+
+My implementation of the algorithm described above makes use of the following hyperparameters, which are also used in the original DDPG paper:
+
+```
+BUFFER_SIZE      # replay buffer size
+BATCH_SIZE       # minibatch size
+GAMMA            # discount factor
+TAU              # for soft update of target parameters
+LR_ACTOR         # learning rate of the actor 
+LR_CRITIC        # learning rate of the critic
+WEIGHT_DECAY     # L2 weight decay
+```
+
+The model architecture for this implementation consists of two networks, one for the actor and one for the critic. Their structure follows the networks described in the original paper very closely. Each consists of 3 fully-connected layers. The first two layers of each network use the `ReLU` activation function. The output layer for the actor uses a `Tanh` activation, since an action in the Reacher environment consist of a tuple of 4 different numbers between -1 and 1. By using `Tanh`, the actor network outputs a different continuous value between -1 and 1 for each index in the action tuple. This allows DDPG to succeed in environemnts with continuous action spaces. The critic network does not make use of an activation in the output layer.
+
+Lastly, I want to mention that this algorithm actually makes use of 4 different neural networks in its implementation: a local actor and a target actor, as well as a local critic and a target critic.
+
+## Training and Results
+
+![Plot of Rewards](https://github.com/MarcioPorto/drlnd-continuous-control/blob/master/plot_of_rewards.png)
+
+As shown in the plot above, my agent is able to solve the environment after 134 episodes, and eventually settles at an average score near 33 after 250 episodes.
+
+In the training process, I initially tried to closely follow the architecture and hyperparameter values from the original paper. However, after many different trials, I found my optimal configuration to have the following hyperparameters:
+
+```
+BUFFER_SIZE = int(1e5)  # (1e6 in original paper)
+BATCH_SIZE = 128        # (64 in original paper)
+GAMMA = 0.99
+TAU = 1e-3 
+LR_ACTOR = 1e-4 
+LR_CRITIC = 1e-3 
+WEIGHT_DECAY = 0        # (1e-2  in original paper)
+```
+
+As for the actual structure of the neural network, I found my optimal configuration to have 600 and 450 nodes in the first two layers, respectively. These numbers are different from the 400 and 300 nodes used for those layers, respectivaly, in the original paper.
+
+Lastly, In order to arrive at my final algorithm for the agent, I also had to change the original `OUNoise` class from the one used in the `Pendulum` environment implementation. The old `sample()` method used `random.random()` to generate the noise, but I found it to work much better when sampling from a Gaussian distribution using `np.random.normal()`.
+
 ## Future Work Ideas
 
-If I had more time to work on this algorithm, I would look at the performance of other algorithms that have shown good results in environments with continuous action spaces. These include: 
+I would like to have the chance to look at the performance of other algorithms in this environment such as TRPO, PPO and A3C, which have already been mentioned. Additionally, [this paper](https://arxiv.org/pdf/1604.06778.pdf) might serve as an inspiration for other algorithms to try in the future in environments like this. 
 
-I would also like to look for a better hyperparameter configuration that performs well with smaller episodes.
-
-Other algorithms...
-
-==================
-
-## Algorithm and Implementation
-
-The first step in the implementation of the algorithm involved starting out from the DDPG algorithm implemented in the Pendulum and Bipedal environments. I decided to keep the model definition the same since it very closely matched the model described in the original DDPG paper. As for the `DDPGAgent` class, there were a few changes based on the requirements of this project:
-
-- The `act()` method was refactored to allow for picking actions for multiple agents before training the model. Running the method separately for each agent the way it was implemented in the Pendulum environment caused instability in the weights of the model as they were being updated very frequently.
-
-During implementation, one 
-
-As for the hyperparameters, I first tried to closely follow the ones mentioned in the original DDPG paper. However, I found that the agent was not training as fast as I had hoped. After some exploration, I realized that the L2 `WEIGHT_DECAY` param was causing the slowdown. The original paper used a value of `1e-2`, but I found that the algorithm trains faster and reliably with a weight decay of 0.
-Was able to keep the same params as the Pendulum implementation.
-Also tried to use other combinations of hyperparameters, including the original
-
-As for `max_t` (the maximum number of time steps per episode), I started out with a value of 300, but found that the agent trains better with a larger value, such as 1000. I believe this is the case because the agent gets to learn how to follow the target better because it is forced to do so for a longer period of time.
-
-## Notes
-
-- Using Gaussian distribution instead of random in OU Noise seems to help a lot
-- Changes from original:
-    - Number of nodes in network
+It would also be interesting to apply multi-agent learning techniques from the last section of this class to this competitive environment.

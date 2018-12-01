@@ -11,7 +11,7 @@ from model import Actor, Critic
 
 
 BUFFER_SIZE = int(1e5)  # replay buffer size (1e6 in original paper)
-BATCH_SIZE = 128        # minibatch size (128 in original paper)
+BATCH_SIZE = 128        # minibatch size (64 in original paper)
 GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor 
